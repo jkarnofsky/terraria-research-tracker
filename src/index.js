@@ -11,26 +11,22 @@ const NAME_OFFSET = 0x18;
 const SPAWN_POINT_OFFSET = 0x99c;
 const JOURNEY_OFFSET = 0x6b;
 
-const GAME_MODES = [
-  'Classic',
-  'Medium Core',
-  'Hard Core',
-  'Journey',
-];
+const GAME_MODES = ['Classic', 'Medium Core', 'Hard Core', 'Journey'];
 
 const SUPPORTED_VERSIONS = [234, 235, 236, 237, 238, 242, 243, 244];
+const MIN_SUPPORTED_VERSION = 234;
 
 const decrypt = (data) => {
   // Convert strings to buffers (works handily for web stuff)
-  if(typeof data === 'string') {
+  if (typeof data === 'string') {
     data = Buffer.from(data, 'ascii');
   }
 
   const decipher = crypto.createDecipheriv(ALGORITHM, KEY, IV);
   try {
     return Buffer.concat([decipher.update(data), decipher.final()]);
-  } catch(e) {
-    throw new Error(`Invalid character data: ${ e }`);
+  } catch (e) {
+    throw new Error(`Invalid character data: ${e}`);
   }
 };
 
@@ -44,8 +40,10 @@ export const get_research_data = (file_data) => {
   const data = decrypt(file_data);
 
   const version = data.readInt16LE();
-  if(!SUPPORTED_VERSIONS.includes(version)) {
-    throw new Error(`This library only supports 4.1.2 (and others with the same format) (version id = ${ version })`);
+  if (MIN_SUPPORTED_VERSIONS > version) {
+    throw new Error(
+      `This library only supports 4.1.2 (and others with the same format) (version id = ${version})`
+    );
   }
 
   let pos = NAME_OFFSET;
@@ -53,8 +51,8 @@ export const get_research_data = (file_data) => {
 
   const mode = GAME_MODES[data.readUInt8(pos)] || 'Unknown!';
 
-  if(mode !== 'Journey') {
-    throw new Error(`This only supports Journey Mode characters, not ${ mode }`);
+  if (mode !== 'Journey') {
+    throw new Error(`This only supports Journey Mode characters, not ${mode}`);
   }
 
   // Skip over everything up to the spawn points, all of which is
@@ -62,7 +60,7 @@ export const get_research_data = (file_data) => {
   pos += SPAWN_POINT_OFFSET;
 
   // Read spawnpoint data until we get to -1, which is the terminator
-  while(data.readInt32LE(pos) !== -1) {
+  while (data.readInt32LE(pos) !== -1) {
     // Skip X + Y + Seed (each are 32 bits)
     pos += 12;
 
@@ -75,18 +73,18 @@ export const get_research_data = (file_data) => {
 
   // Clone the items object
   const results = _.cloneDeep(items);
-  for(;;) {
+  for (;;) {
     let item;
     [item, pos] = read_lpstring(data, pos);
-    if(item.length === 0) {
+    if (item.length === 0) {
       break;
     }
 
     const quantity = data.readInt32LE(pos);
     pos += 4;
 
-    if(!results[item]) {
-      console.warn(`Uh oh! Missing item: ${ item }`);
+    if (!results[item]) {
+      console.warn(`Uh oh! Missing item: ${item}`);
       continue;
     }
 
@@ -98,27 +96,31 @@ export const get_research_data = (file_data) => {
 };
 
 export const researched = (file_data) => {
-  return _.chain(get_research_data(file_data))
-    // Get only researched things
-    .pickBy((value) => {
-      return value.researched;
-    })
+  return (
+    _.chain(get_research_data(file_data))
+      // Get only researched things
+      .pickBy((value) => {
+        return value.researched;
+      })
 
-    // Only item names
-    .keys()
-    .value();
+      // Only item names
+      .keys()
+      .value()
+  );
 };
 
 export const not_researched = (file_data) => {
-  return _.chain(get_research_data(file_data))
-    // Get only researched things
-    .pickBy((value) => {
-      return !value.researched;
-    })
+  return (
+    _.chain(get_research_data(file_data))
+      // Get only researched things
+      .pickBy((value) => {
+        return !value.researched;
+      })
 
-    // Only item names
-    .keys()
-    .value();
+      // Only item names
+      .keys()
+      .value()
+  );
 };
 
 export const researched_ids = (file_data) => {

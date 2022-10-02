@@ -20270,5 +20270,5 @@ export const items = {
   PaintingWolfgang: {
     needed: 1,
     id: 5124
-  },
+  }
 };
