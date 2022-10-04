@@ -8,12 +8,13 @@ const KEY = 'h\x003\x00y\x00_\x00g\x00U\x00y\x00Z\x00';
 const IV = KEY;
 
 const NAME_OFFSET = 0x18;
-const SPAWN_POINT_OFFSET = 0x99c;
+const SPAWN_POINT_OFFSET_LT_271 = 0x99c;
+const SPAWN_POINT_OFFSET_GTE_271 = 0xa83;
 const JOURNEY_OFFSET = 0x6b;
 
 const GAME_MODES = ['Classic', 'Medium Core', 'Hard Core', 'Journey'];
 
-const SUPPORTED_VERSIONS = [234, 235, 236, 237, 238, 242, 243, 244];
+// const SUPPORTED_VERSIONS = [234, 235, 236, 237, 238, 242, 243, 244];
 const MIN_SUPPORTED_VERSION = 234;
 
 const decrypt = (data) => {
@@ -33,14 +34,17 @@ const decrypt = (data) => {
 const read_lpstring = (buffer, offset) => {
   const length = buffer.readInt8(offset);
   const end = offset + 1 + length;
-  return [buffer.toString('utf8', offset + 1, end), end];
+  let lpstring = [buffer.toString('utf8', offset + 1, end), end];
+  return lpstring;
 };
 
 export const get_research_data = (file_data) => {
   const data = decrypt(file_data);
-
+  console.log('player file decrypted');
   const version = data.readInt16LE();
-  if (MIN_SUPPORTED_VERSIONS > version) {
+  console.log('version: ' + version);
+
+  if (MIN_SUPPORTED_VERSION > version) {
     throw new Error(
       `This library only supports 4.1.2 (and others with the same format) (version id = ${version})`
     );
@@ -57,7 +61,12 @@ export const get_research_data = (file_data) => {
 
   // Skip over everything up to the spawn points, all of which is
   // thankfully static
-  pos += SPAWN_POINT_OFFSET;
+
+  if (version < 271) {
+    pos += SPAWN_POINT_OFFSET_LT_271;
+  } else {
+    pos += SPAWN_POINT_OFFSET_GTE_271;
+  }
 
   // Read spawnpoint data until we get to -1, which is the terminator
   while (data.readInt32LE(pos) !== -1) {
@@ -73,6 +82,7 @@ export const get_research_data = (file_data) => {
 
   // Clone the items object
   const results = _.cloneDeep(items);
+
   for (;;) {
     let item;
     [item, pos] = read_lpstring(data, pos);
